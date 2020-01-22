@@ -1,7 +1,7 @@
 import Config
 
 config :drain,
-  aggregators: [
-    Drain.Aggregator.Logger
+  processors: [
+    Drain.Processor.Logger
   ],
   store: Drain.Store.Mnesia

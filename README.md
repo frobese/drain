@@ -14,8 +14,8 @@ end
 And adding it to your configuration in `config.exs`:
 ```elixir
 config :drain,
-  aggregators: [
-    Drain.Aggregator.Logger
+  processors: [
+    Drain.Processor.Logger
   ],
   store: Drain.Store.Mnesia
 ```

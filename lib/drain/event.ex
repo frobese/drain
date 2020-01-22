@@ -1,6 +1,8 @@
 defmodule Drain.Event do
   @moduledoc false
 
+  # import Drain.Utils
+
   @type encoded ::
           {timestamp :: pos_integer(), module_string :: String.t(), tag :: String.t(),
            encoded_event :: String.t()}
@@ -48,29 +50,6 @@ defmodule Drain.Event do
       host: node()
     }
     |> Drain.Gateway.publish()
-  end
-
-  def encode(%__MODULE__{} = event) do
-    {event.timestamp, Atom.to_string(event.module), event.tag,
-     Base.encode64(:erlang.term_to_binary(event))}
-  end
-
-  def decode({timestamp, module_string, tag, encoded_event}) do
-    with module <- String.to_existing_atom(module_string),
-         {:ok, binary_event} <- Base.decode64(encoded_event),
-         %__MODULE__{timestamp: ^timestamp, module: ^module, tag: ^tag} = event <-
-           :erlang.binary_to_term(binary_event, [:safe]) do
-      {:ok, event}
-    else
-      %__MODULE__{} ->
-        {:error, :integrity_error}
-
-      :error ->
-        {:error, :encoding_error}
-    end
-  rescue
-    ArgumentError ->
-      {:error, :integrity_error}
   end
 
   # defp type(opts, stacktrace) do

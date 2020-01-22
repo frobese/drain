@@ -52,7 +52,7 @@ defmodule Drain.Watcher do
     ]
 
     cond do
-      aggregator_has_backends?() -> :ok
+      processor_has_backends?() -> :ok
       true -> IO.puts(:stderr, message)
     end
 
@@ -63,7 +63,7 @@ defmodule Drain.Watcher do
     {:noreply, state}
   end
 
-  defp aggregator_has_backends? do
+  defp processor_has_backends? do
     try do
       :gen_event.which_handlers(Drain) != []
     catch

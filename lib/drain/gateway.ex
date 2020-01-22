@@ -3,12 +3,18 @@ defmodule Drain.Gateway do
 
   use GenServer
 
+  import Drain.Utils
+
   alias Drain.Event
 
   @gen_event Drain
 
   def publish(%Event{uuid: nil, timestamp: nil} = event) do
     GenServer.call(__MODULE__, {:"$drain_event", event})
+  end
+
+  def get(timestamp, modules, tags) do
+    GenServer.call(__MODULE__, {:"$drain_get_events", timestamp, modules, tags})
   end
 
   def start_link(_args \\ []) do
@@ -49,17 +55,40 @@ defmodule Drain.Gateway do
     {:reply, event, state}
   end
 
+  def handle_call(
+        {:"$drain_get_events", timestamp, modules, tags},
+        _from,
+        %{store: store} = state
+      ) do
+    {:reply, {:os.system_time(:nanosecond), get_events(timestamp, modules, tags, store)}, state}
+  end
+
   def finalize_event(event) do
     %Event{event | uuid: UUID.uuid4(), timestamp: :os.system_time(:nanosecond)}
   end
 
-  def store_event(_event, nil) do
+  defp store_event(_event, nil) do
     :ok
   end
 
-  def store_event(event, store) do
+  defp store_event(event, store) do
     event
-    |> Event.encode()
+    |> encode_event()
     |> store.append()
+  end
+
+  defp get_events(_timestamp, _modules, _tags, nil) do
+    []
+  end
+
+  defp get_events(timestamp, modules, tags, store) do
+    store.get(timestamp, modules, tags)
+    |> Enum.map(fn decoded ->
+      case decode_event(decoded) do
+        {:ok, event} -> event
+        _ -> []
+      end
+    end)
+    |> List.flatten()
   end
 end

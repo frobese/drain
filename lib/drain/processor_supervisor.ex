@@ -1,26 +1,26 @@
-defmodule Drain.AggregatorSupervisor do
+defmodule Drain.ProcessorSupervisor do
   @moduledoc false
 
   use Supervisor
-  @name Drain.AggregatorSupervisor
+  @name Drain.ProcessorSupervisor
 
   @doc """
-  Starts the aggregator supervisor.
+  Starts the processor supervisor.
   """
   def start_link(_) do
     case Supervisor.start_link(__MODULE__, [], name: @name) do
       {:ok, _} = ok ->
-        for aggregator <- Application.get_env(:drain, :aggregators, []) do
-          case watch(aggregator) do
+        for processor <- Application.get_env(:drain, :processors, []) do
+          case watch(processor) do
             {:ok, _} ->
               :ok
 
             {:error, {{:EXIT, exit}, _spec}} ->
-              raise "EXIT when installing aggregator #{inspect(aggregator)}: " <>
+              raise "EXIT when installing processor #{inspect(processor)}: " <>
                       Exception.format_exit(exit)
 
             {:error, error} ->
-              raise "ERROR when installing aggregator #{inspect(aggregator)}: " <>
+              raise "ERROR when installing processor #{inspect(processor)}: " <>
                       Exception.format_exit(error)
           end
         end
@@ -33,12 +33,12 @@ defmodule Drain.AggregatorSupervisor do
   end
 
   @doc """
-  Removes the given `aggregator`.
+  Removes the given `processor`.
   """
-  def unwatch(aggregator) do
-    case Supervisor.terminate_child(@name, aggregator) do
+  def unwatch(processor) do
+    case Supervisor.terminate_child(@name, processor) do
       :ok ->
-        _ = Supervisor.delete_child(@name, aggregator)
+        _ = Supervisor.delete_child(@name, processor)
         :ok
 
       {:error, _} = error ->
@@ -47,19 +47,19 @@ defmodule Drain.AggregatorSupervisor do
   end
 
   @doc """
-  Watches the given `aggregator`.
+  Watches the given `processor`.
   """
-  def watch(aggregator) do
+  def watch(processor) do
     spec = %{
-      id: aggregator,
-      start: {Drain.Watcher, :start_link, [{aggregator, aggregator}]},
+      id: processor,
+      start: {Drain.Watcher, :start_link, [{processor, processor}]},
       restart: :transient
     }
 
     case Supervisor.start_child(@name, spec) do
       {:error, :already_present} ->
-        _ = Supervisor.delete_child(@name, aggregator)
-        watch(aggregator)
+        _ = Supervisor.delete_child(@name, processor)
+        watch(processor)
 
       other ->
         other

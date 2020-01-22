@@ -17,7 +17,7 @@ defmodule Drain.Application do
         start: {:gen_event, :start_link, [{:local, Drain}, start_options]},
         modules: :dynamic
       },
-      Drain.AggregatorSupervisor
+      Drain.ProcessorSupervisor
     ]
 
     case Supervisor.start_link(children, strategy: :rest_for_one, name: Drain.Supervisor) do
