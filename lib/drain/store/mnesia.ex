@@ -23,8 +23,6 @@ defmodule Drain.Store.Mnesia do
       _ ->
         []
     end
-
-    # |> Stream.map(fn x -> load(x) end)
   end
 
   # TODO: Append-only should be ensured
@@ -32,17 +30,8 @@ defmodule Drain.Store.Mnesia do
   def append({timestamp, module, tag, event}) do
     result =
       :mnesia.transaction(fn ->
-        # :mnesia.match_object(
-        #   {:drain, :_, :create, event.module, :_, event.entity_type, event.entity_uuid, :_, :_, :_}
-        # )
-        # |> case do
-        #   [] ->
         {:drain, timestamp, module, tag, event}
         |> :mnesia.write()
-
-        #   _ ->
-        #     :noop
-        # end
       end)
 
     case result do
@@ -83,24 +72,7 @@ defmodule Drain.Store.Mnesia do
     tag_guard([{:==, :"$3", tag} | guards], tags)
   end
 
-  # def append(%Drain.Event{} = event) do
-  #   :mnesia.transaction(fn ->
-  #     {:drain, event.timestamp, event.type, event.module, event.version, event.entity_type,
-  #      event.entity_uuid, encode(event.data), event.application, event.host}
-  #     |> :mnesia.write()
-  #   end)
-
-  #   # TODO: rethink
-  #   {:ok, event}
-  # end
-
-  # def delete_all() do
-  #   :mnesia.clear_table(:drain)
-  # end
-
   def setup do
-    # :mnesia.stop()
-
     with :ok <- init_schema(),
          :ok <- :mnesia.start(),
          :ok <-
@@ -110,20 +82,11 @@ defmodule Drain.Store.Mnesia do
                :timestamp,
                :tag,
                :module,
-               #  :version,
-               #  :entity_type,
-               #  :entity_uuid,
-               #  :entity_id,
                :data
-               #  :application,
-               #  :host
              ],
              :ordered_set
            ) do
-      #  :ok <- create_indices(:drain, :timestamp) do
-      #  :ok <- create_indices(:drain, :module) do
-      #  :ok <- create_indices(:drain, :entity_type),
-      #  :ok <- create_indices(:drain, :entity_id),
+      #  :ok <- create_indices(:drain, :tag) do
       Logger.debug(inspect(:mnesia.system_info(:all), pretty: true))
 
       :ok
