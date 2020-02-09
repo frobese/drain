@@ -80,8 +80,8 @@ defmodule Drain.Store.Mnesia do
              :drain,
              [
                :timestamp,
-               :tag,
                :module,
+               :tag,
                :data
              ],
              :ordered_set
