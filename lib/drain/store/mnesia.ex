@@ -85,8 +85,8 @@ defmodule Drain.Store.Mnesia do
                :data
              ],
              :ordered_set
-           ) do
-      #  :ok <- create_indices(:drain, :tag) do
+           ),
+         :ok <- create_indices(:drain, :tag) do
       Logger.debug(inspect(:mnesia.system_info(:all), pretty: true))
 
       :ok
