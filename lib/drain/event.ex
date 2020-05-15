@@ -34,7 +34,7 @@ defmodule Drain.Event do
     quote do
       @__drain_spec__ unquote(Macro.escape(version))
 
-      def publish(tag \\ "", data) when is_binary(tag) and is_map(data) do
+      def publish(tag \\ "", data) when is_binary(tag) do
         unquote(__MODULE__).__publish__(__MODULE__, tag, data, @__drain_spec__)
       end
     end
