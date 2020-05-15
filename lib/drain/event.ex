@@ -18,7 +18,7 @@ defmodule Drain.Event do
   ]
 
   defmacro __using__(opts) do
-    stacktrace = caller_stacktrace(__CALLER__)
+    stacktrace = __caller_stacktrace__(__CALLER__)
 
     cond do
       opts[:entity] -> IO.warn("The entity option is deprecated", stacktrace)
@@ -40,6 +40,7 @@ defmodule Drain.Event do
     end
   end
 
+  @doc false
   def __publish__(module, tag, data, version) do
     %__MODULE__{
       module: module,
@@ -52,39 +53,8 @@ defmodule Drain.Event do
     |> Drain.Gateway.publish()
   end
 
-  # defp type(opts, stacktrace) do
-  #   type = opts[:type]
-
-  #   if(type in @types) do
-  #     type
-  #   else
-  #     IO.warn("Expected a type of " <> Enum.join(@types, ", "), stacktrace)
-  #   end
-  # end
-
-  # defp entity(opts, caller, stacktrace) do
-  #   entity = opts[:entity]
-
-  #   entity =
-  #     if Macro.validate(entity) == :ok do
-  #       Macro.expand_once(entity, caller)
-  #     else
-  #       entity
-  #     end
-
-  #   cond do
-  #     is_atom(entity) ->
-  #       entity
-
-  #     is_nil(entity) ->
-  #       IO.warn("Missing entity definition", stacktrace)
-
-  #     true ->
-  #       IO.warn("Expected the entity to be an atom got " <> inspect(entity), stacktrace)
-  #   end
-  # end
-
-  def caller_stacktrace(%Macro.Env{
+  @doc false
+  def __caller_stacktrace__(%Macro.Env{
         module: module,
         function: {func, arity},
         file: file,
@@ -93,7 +63,8 @@ defmodule Drain.Event do
     [{module, func, arity, [file: to_charlist(file), line: line]}]
   end
 
-  def caller_stacktrace(%Macro.Env{
+  @doc false
+  def __caller_stacktrace__(%Macro.Env{
         module: module,
         function: nil,
         file: file,

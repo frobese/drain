@@ -4,6 +4,7 @@ defmodule Drain.Processor.Logger do
   use Drain.Processor
   require Logger
 
+  @impl true
   def digest(event) do
     Logger.info(inspect(event, pretty: true))
   end

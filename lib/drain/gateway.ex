@@ -9,18 +9,22 @@ defmodule Drain.Gateway do
 
   @gen_event Drain
 
+  @doc false
   def publish(%Event{uuid: nil, timestamp: nil} = event) do
     GenServer.call(__MODULE__, {:"$drain_event", event})
   end
 
+  @doc false
   def get(timestamp, modules, tags) do
     GenServer.call(__MODULE__, {:"$drain_get_events", timestamp, modules, tags})
   end
 
+  @doc false
   def start_link(_args \\ []) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  @impl true
   def init(_args) do
     case Application.get_env(:drain, :store) do
       nil ->
@@ -39,12 +43,14 @@ defmodule Drain.Gateway do
     end
   end
 
+  @impl true
   def handle_continue(:init_store, state) do
     state.store.setup()
 
     {:noreply, state}
   end
 
+  @impl true
   def handle_call({:"$drain_event", event}, _from, %{store: store} = state) do
     event = finalize_event(event)
 

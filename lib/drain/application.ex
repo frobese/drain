@@ -3,7 +3,7 @@ defmodule Drain.Application do
 
   use Application
 
-  @doc false
+  @impl true
   def start(_type, _args) do
     start_options = []
 
@@ -34,6 +34,7 @@ defmodule Drain.Application do
     Application.start(:drain)
   end
 
+  @doc false
   def stop do
     Application.stop(:drain)
   end

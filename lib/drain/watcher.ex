@@ -7,7 +7,7 @@ defmodule Drain.Watcher do
     GenServer.start_link(__MODULE__, tuple)
   end
 
-  @doc false
+  @impl true
   def init({handler, args}) do
     Process.flag(:trap_exit, true)
 
@@ -36,24 +36,21 @@ defmodule Drain.Watcher do
     end
   end
 
-  @doc false
+  @impl true
   def handle_info({:gen_event_EXIT, handler, reason}, handler)
       when reason in [:normal, :shutdown] do
     {:stop, reason, handler}
   end
 
   def handle_info({:gen_event_EXIT, handler, reason}, handler) do
-    message = [
-      ":gen_event handler ",
-      inspect(handler),
-      " installed in Drain terminating\n",
-      "** (exit) ",
-      format_exit(reason)
-    ]
-
-    cond do
-      processor_has_backends?() -> :ok
-      true -> IO.puts(:stderr, message)
+    if not processor_has_backends?() do
+      IO.puts(:stderr, [
+        ":gen_event handler ",
+        inspect(handler),
+        " installed in Drain terminating\n",
+        "** (exit) ",
+        format_exit(reason)
+      ])
     end
 
     {:stop, reason, handler}
@@ -64,13 +61,12 @@ defmodule Drain.Watcher do
   end
 
   defp processor_has_backends? do
-    try do
-      :gen_event.which_handlers(Drain) != []
-    catch
-      _, _ -> false
-    end
+    :gen_event.which_handlers(Drain) != []
+  rescue
+    _ -> false
   end
 
+  @impl true
   def terminate(_reason, handler) do
     # On terminate we remove the handler, this makes the
     # process sync, allowing existing messages to be flushed

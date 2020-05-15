@@ -4,6 +4,7 @@ defmodule Drain.Store.Mnesia do
   use Drain.Store
   require Logger
 
+  @impl true
   def get(timestamp, modules, tags) do
     match_spec = {:drain, :"$1", :"$2", :"$3", :"$4"}
 
@@ -26,7 +27,7 @@ defmodule Drain.Store.Mnesia do
   end
 
   # TODO: Append-only should be ensured
-  # TODO: Well-behaved
+  @impl true
   def append({timestamp, module, tag, event}) do
     result =
       :mnesia.transaction(fn ->
@@ -72,6 +73,7 @@ defmodule Drain.Store.Mnesia do
     tag_guard([{:==, :"$3", tag} | guards], tags)
   end
 
+  @impl true
   def setup do
     with :ok <- init_schema(),
          :ok <- :mnesia.start(),
@@ -113,7 +115,7 @@ defmodule Drain.Store.Mnesia do
     end
   end
 
-  defp create_table(name, attributes, type \\ :set) do
+  defp create_table(name, attributes, type) do
     case :mnesia.create_table(name, attributes: attributes, type: type, disc_copies: [node()]) do
       {:atomic, :ok} -> :ok
       {:aborted, {:already_exists, _name}} -> :ok

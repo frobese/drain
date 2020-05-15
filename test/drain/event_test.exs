@@ -1,7 +1,7 @@
 defmodule Drain.EventTest do
   use ExUnit.Case
 
-  alias Drain.Event
+  alias Drain.{Event, Utils}
 
   doctest Drain.Event
 
@@ -15,11 +15,11 @@ defmodule Drain.EventTest do
       }
       |> Drain.Gateway.finalize_event()
 
-    encoded = Event.encode(event)
+    encoded = Utils.encode_event(event)
 
-    assert {_timestamp, "Elixir.SomeEvent", <<_::binary>>} = encoded
+    assert {_timestamp, "Elixir.SomeEvent", nil, <<_::binary>>} = encoded
 
-    assert {:ok, event} == Event.decode(encoded)
+    assert {:ok, event} == Utils.decode_event(encoded)
   end
 
   test "decode error test" do
@@ -32,12 +32,14 @@ defmodule Drain.EventTest do
       }
       |> Drain.Gateway.finalize_event()
 
-    {timestamp, mod_string, encoded} = Event.encode(event)
+    {timestamp, mod_string, nil, encoded} = Utils.encode_event(event)
 
-    assert {:error, :integrity_error} = Event.decode({1234, mod_string, encoded})
-    assert {:error, :integrity_error} = Event.decode({timestamp, "NotAModule", encoded})
+    assert {:error, :integrity_error} = Utils.decode_event({1234, mod_string, nil, encoded})
 
     assert {:error, :integrity_error} =
-             Event.decode({timestamp, mod_string, Base.encode64("WierdStuff")})
+             Utils.decode_event({timestamp, "NotAModule", nil, encoded})
+
+    assert {:error, :integrity_error} =
+             Utils.decode_event({timestamp, mod_string, nil, Base.encode64("WierdStuff")})
   end
 end
