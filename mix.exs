@@ -1,7 +1,7 @@
 defmodule Drain.MixProject do
   use Mix.Project
 
-  @version "1.0.0-alpha.3"
+  @version "1.0.0-alpha.4"
 
   def project do
     [
