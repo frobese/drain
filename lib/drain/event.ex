@@ -2,6 +2,8 @@ defmodule Drain.Event do
   @moduledoc false
 
   # import Drain.Utils
+  @callback publish(String.t(), map()) :: any
+  @optional_callbacks publish: 2
 
   @type encoded ::
           {timestamp :: pos_integer(), module_string :: String.t(), tag :: String.t(),
