@@ -7,8 +7,12 @@ defmodule Chat.Application do
 
   def start(_type, _args) do
     children = [
-      # Start the Ecto repository
+      # Start the Drain link
+      Chat.Repo.Link,
+      # -or {Drain.Link, name: Chat.Repo.Link, target: Chat.Repo},
+      # Start the Drain repository
       Chat.Repo,
+      # -or- {Chat.Repo, link: Chat.Repo.Link},
       # Start the Telemetry supervisor
       ChatWeb.Telemetry,
       # Start the PubSub system

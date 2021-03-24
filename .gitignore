@@ -12,6 +12,7 @@ erl_crash.dump
 
 # Generated on crash by NPM
 npm-debug.log
+yarn-debug.log
 
 # Static artifacts
 /assets/node_modules
@@ -35,4 +36,5 @@ npm-debug.log
 # avoid adding data to .git
 production.dump
 package-lock.json
+yarn.lock
 .DS_Store

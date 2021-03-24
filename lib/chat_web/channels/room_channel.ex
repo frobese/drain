@@ -19,7 +19,7 @@ defmodule ChatWeb.RoomChannel do
   # by sending replies to requests from the client
   @impl true
   def handle_in("shout", payload, socket) do
-    Chat.Message.changeset(%Chat.Message{}, payload) |> Chat.Repo.insert()
+    Chat.Message.from_payload(payload) |> Chat.Repo.publish_json("chat/message")
     broadcast(socket, "shout", payload)
     {:noreply, socket}
   end

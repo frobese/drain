@@ -28,7 +28,7 @@ defmodule ChatWeb.RoomChannelTest do
   test ":after_join sends all existing messages", %{socket: socket} do
     # insert a new message to send in the :after_join
     payload = %{name: "Alex", message: "test"}
-    Chat.Message.changeset(%Chat.Message{}, payload) |> Chat.Repo.insert()
+    Chat.Message.from_payload(payload) |> Chat.Repo.publish(nil, nil)
 
     {:ok, _, socket2} = ChatWeb.UserSocket
       |> socket("user_id", %{some: :assign})

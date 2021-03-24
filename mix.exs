@@ -41,9 +41,6 @@ defmodule Chat.Mixfile do
   defp deps do
     [
       {:phoenix, "~> 1.5.5"},
-      {:phoenix_ecto, "~> 4.2.1"},
-      {:ecto_sql, "~> 3.4.5"},
-      {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 2.11"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_dashboard, "~> 0.2.0"},
@@ -65,22 +62,17 @@ defmodule Chat.Mixfile do
       # documentation
       {:inch_ex, "~> 2.1.0-rc.1", only: :docs},
       # github.com/dwyl/learn-pre-commit
-      {:pre_commit, "~> 0.3.4", only: :dev}
+      {:pre_commit, "~> 0.3.4", only: :dev},
+
+      {:drain, in_umbrella: true}, # for local devel
     ]
   end
 
-  # Aliases are shortcuts or tasks specific to the current project.
-  # For example, to create, migrate and run the seeds file at once:
-  #
-  #     $ mix ecto.setup
-  #
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get", "ecto.setup", "cmd npm install --prefix assets"],
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate", "test"],
+      setup: ["deps.get", "cmd yarn --cwd assets install"],
+      test: ["test"],
       cover: ["coveralls.json"],
       "cover.html": ["coveralls.html"]
     ]
