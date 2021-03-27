@@ -20,7 +20,7 @@ defmodule Drain.Link do
 
   defmodule State do
     @moduledoc false
-    defstruct target: nil, connection: nil, handshake: false, data: <<>>
+    defstruct target: nil, socket: nil, handshake: false, data: <<>>
   end
 
   @default_args [name: __MODULE__, target: nil]
@@ -55,10 +55,6 @@ defmodule Drain.Link do
     GenServer.call(link, {:send, packet})
   end
 
-  def stats() do
-    GenServer.call(__MODULE__, :stats)
-  end
-
   # Server impl
 
   def handle_continue({:connect, retries}, %State{} = state)
@@ -69,63 +65,51 @@ defmodule Drain.Link do
     case :gen_tcp.connect(host, port, [:binary, active: true]) do
       {:ok, socket} ->
         Logger.debug("Connection established")
-        #conn = Connection.generate(socket)
-        conn = socket
         Process.send_after(self(), :handshake_timeout, @handshake_timeout)
-        Logger.debug(fn -> "Connection id: #{inspect conn}" end)
-        invoke_callback({:connect, "connected to #{inspect conn}"}, state)
-        {:noreply, %State{state | connection: conn}}
+        Logger.debug(fn -> "Connection id: #{inspect socket}" end)
+        invoke_callback({:connect, "connected to #{inspect socket}"}, state)
+        {:noreply, %State{state | socket: socket}}
 
       {:error, reason} ->
         Logger.error("Drain TCP connection failed #{inspect reason}")
         :timer.sleep(1000)
-        {:noreply, %State{state | connection: reason}, {:continue, {:connect, retries - 1}}}
+        {:noreply, %State{state | socket: reason}, {:continue, {:connect, retries - 1}}}
     end
   end
 
   def handle_continue({:connect, _retries}, state) do
-    {:stop, state.connection, state}
+    {:stop, state.socket, state}
   end
 
   # Processes the incoming TCP-Packets
-  def handle_info({:tcp, _socket, packet}, state) do
-    state.connection
-    |> Protocol.decode(state.data <> packet)  # this should loop until :error
-    |> case do
-      {conn, {:ok, msg, rest}} ->
+  def handle_info({:tcp, socket, packet}, state) do
+    case Protocol.decode(state.data <> packet) do
+      {:ok, msg, rest} ->
         # Some special cases...
         state = case msg do
           %Protocol.Hello{} = hello ->
             Logger.debug("Got hello from #{hello.ver}")
-
             packet = %Protocol.Info{} |> Protocol.encode()
-            :ok = :gen_tcp.send(state.connection, packet)
-
+            :ok = :gen_tcp.send(socket, packet)
             %State{state | handshake: true, data: rest}
 
           %Protocol.Ping{} ->
             Logger.debug("Got ping, sending pong")
-
             packet = %Protocol.Pong{} |> Protocol.encode()
-            :ok = :gen_tcp.send(state.connection, packet)
-
+            :ok = :gen_tcp.send(socket, packet)
             %State{state | data: rest}
 
           %{} = msg ->
             Logger.debug("Got msg #{inspect msg}")
-
-            %State{state | data: rest}
-
-          :error ->
-            Logger.error("This can't happen...")
             %State{state | data: rest}
         end
 
         invoke_callback({:recv, msg}, state)
-        {:noreply, %State{state | connection: conn}}
+        state = %State{state | socket: socket}
+        handle_info({:tcp, socket, <<>>}, state)
 
-      {conn, {:error, packet}} ->
-        {:noreply, %State{state | connection: conn, data: packet}}
+      {:error, packet} ->
+        {:noreply, %State{state | socket: socket, data: packet}}
     end
   end
 
@@ -140,7 +124,7 @@ defmodule Drain.Link do
   end
 
   def handle_info(:handshake_timeout, %State{handshake: false} = state) do
-    Logger.error("CBOR handshake timeout.")
+    Logger.error("Handshake timeout.")
     {:stop, :handshake_timeout, state}
   end
 
@@ -148,15 +132,11 @@ defmodule Drain.Link do
     {:noreply, state}
   end
 
-  def handle_call(:stats, _from, state) do
-    {:reply, state.connection.stats, state}
-  end
-
-  # adds compression if enabled, adds framing
+  # send a raw frame
   def handle_call({:send, packet}, _from, state)
       when is_binary(packet) do
 
-    result = :gen_tcp.send(state.connection, packet)
+    result = :gen_tcp.send(state.socket, packet)
 
     {:reply, result, state}
   end

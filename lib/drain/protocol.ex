@@ -103,7 +103,7 @@ defmodule Drain.Protocol do
   end
 
   # hacky stub for now, strips framing
-  def decode(conn, << length :: size(32), data :: binary - size(length), rest :: binary >>) do
+  def decode(<< length :: size(32), data :: binary - size(length), rest :: binary >>) do
     {:ok, msg, ""} = CBOR.decode(data)
     Logger.debug("Packet raw (#{length} bytes): #{inspect msg}")
     msg = msg
@@ -129,15 +129,18 @@ defmodule Drain.Protocol do
       end
 
     Logger.debug("Packet msg (#{length} bytes): #{inspect msg}")
-    {conn, {:ok, msg, rest}}
+    {:ok, msg, rest}
   end
-  def decode(conn, << length :: size(32), _data :: binary >> = packet) do
+  def decode(<<>>) do
+    {:error, <<>>}
+  end
+  def decode(<< length :: size(32), _data :: binary >> = packet) do
     Logger.warn("Incomplete packet #{byte_size(packet)} of #{length} bytes")
-    {conn, {:error, packet}}
+    {:error, packet}
   end
-  def decode(conn, packet) when is_binary(packet) do
+  def decode(packet) when is_binary(packet) do
     Logger.warn("Incomplete packet #{byte_size(packet)} bytes")
-    {conn, {:error, packet}}
+    {:error, packet}
   end
 
   defp modulename_to_key(name) do
