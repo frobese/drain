@@ -31,12 +31,13 @@ defmodule Drain.Link do
   end
 
   def init(args) do
+    static_endpoint() # use as fallback?
     {host, port} = endpoint()
 
     retries = Application.get_env(:drain, :retries, 5)
     unless is_integer(retries), do: raise("The retries option must be an integer")
 
-    Logger.info("Connection to #{host}:#{port}")
+    Logger.info("Connection to #{inspect host}:#{port}")
     {:ok, %State{target: args[:target]}, {:continue, {:connect, retries}}}
   end
 
@@ -62,6 +63,7 @@ defmodule Drain.Link do
 
   def handle_continue({:connect, retries}, %State{} = state)
       when is_integer(retries) and retries > 0 do
+    static_endpoint() # use as fallback?
     {host, port} = endpoint()
 
     case :gen_tcp.connect(host, port, [:binary, active: true]) do
@@ -171,6 +173,11 @@ defmodule Drain.Link do
   # Helper (config)
 
   defp endpoint do
+    {:ok, hostport} = Drain.Discover.discover()
+    hostport
+  end
+
+  defp static_endpoint do
     port = Application.get_env(:drain, :port, 6986)
 
     host =
