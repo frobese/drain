@@ -7,20 +7,23 @@ defmodule Chat.Application do
 
   def start(_type, _args) do
     children = [
+      # Start the Telemetry supervisor
+      ChatWeb.Telemetry,
+      # Start the PubSub system
+      {Phoenix.PubSub, name: Chat.PubSub},
+      # Start the Endpoint (http/https)
+      ChatWeb.Endpoint,
+
+      # Start a Drain server
+      #Drain.Server,
+      # Start a Drain discovery
+      #Drain.Discovery,
       # Start the Drain link
       Chat.Repo.Link,
       # -or {Drain.Link, name: Chat.Repo.Link, target: Chat.Repo},
       # Start the Drain repository
       Chat.Repo,
       # -or- {Chat.Repo, link: Chat.Repo.Link},
-      # Start the Telemetry supervisor
-      ChatWeb.Telemetry,
-      # Start the PubSub system
-      {Phoenix.PubSub, name: Chat.PubSub},
-      # Start the Endpoint (http/https)
-      ChatWeb.Endpoint
-      # Start a worker by calling: Chat.Worker.start_link(arg)
-      # {Chat.Worker, arg}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
