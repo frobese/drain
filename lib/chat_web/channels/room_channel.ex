@@ -20,7 +20,6 @@ defmodule ChatWeb.RoomChannel do
   @impl true
   def handle_in("shout", payload, socket) do
     Chat.Message.from_payload(payload) |> Chat.Repo.publish_json("chat/message")
-    broadcast(socket, "shout", payload)
     {:noreply, socket}
   end
 
@@ -42,5 +41,4 @@ defmodule ChatWeb.RoomChannel do
     # :noreply
     {:noreply, socket}
   end
-
 end
