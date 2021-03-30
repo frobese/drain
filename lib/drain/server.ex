@@ -2,8 +2,7 @@ defmodule Drain.Server do
   @moduledoc ~S"""
   Spawns a Stormdrain server with some options.
 
-  - bind_host: "0.0.0.0"
-  - bind_port: 6986
+  - bind_addr: "0.0.0.0:6986"
   - datadir: nil
   - readonly: false
   - snapshot: false
@@ -11,12 +10,12 @@ defmodule Drain.Server do
 
   use GenServer
   require Logger
+  alias Drain.Protocol
 
   @default_args [
     name: __MODULE__,
     exe: nil,
-    bind_host: "0.0.0.0",
-    bind_port: 6986,
+    bind_addr: "0.0.0.0:6986",
     datadir: nil,
     readonly: false,
     snapshot: false,
@@ -30,20 +29,13 @@ defmodule Drain.Server do
   def init(args) do
     Process.flag(:trap_exit, true)
     exe = args[:exe] || get_exe()
+    bind_addr = if args[:bind_addr], do: ["-a", args[:bind_addr]], else: []
     readonly = if args[:readonly], do: "--readonly", else: []
     snapshot = if args[:snapshot], do: "--snapshot", else: []
     datadir = if args[:datadir], do: args[:datadir], else: []
-    params = [
-      "-a",
-      "#{args[:bind_host]}:#{args[:bind_port]}",
-      "serve",
-      "--pipe",
-      readonly,
-      snapshot,
-      datadir,
-    ] |> List.flatten()
+    params = [bind_addr, "serve", "--pipe", readonly, snapshot, datadir] |> List.flatten()
     Logger.info("Launching server #{exe} with #{inspect params}")
-    port = Port.open({:spawn_executable, exe}, [:binary, args: params])
+    port = Port.open({:spawn_executable, exe}, [:binary, {:packet, 4}, args: params])
     Logger.debug("Port #{inspect Port.info(port)}")
     Port.monitor(port)
     {:ok, port}
@@ -60,9 +52,44 @@ defmodule Drain.Server do
     {:stop, :error, nil}
   end
 
-  # this won't work on Ctrl-C...
-  def handle_info({:EXIT, _pid, :client_down}, state) do
-    Logger.warn("Drain server EXIT client_down")
+  # data sent by the port
+  def handle_info({_port, {:data, data}}, state) do
+    case Protocol.decode(data) do
+      {:ok, msg, _rest} ->
+        # Some special cases...
+        case msg do
+          %Protocol.Hello{} = hello ->
+            Logger.debug("Got hello from #{hello.ver}")
+            packet = %Protocol.Info{} |> Protocol.encode()
+            send(state, {self(), {:command, packet}})
+            # %State{state | handshake: true} # maybe later...
+
+          %Protocol.Ping{} ->
+            Logger.debug("Got ping, sending pong")
+            packet = %Protocol.Pong{} |> Protocol.encode()
+            send(state, {self(), {:command, packet}})
+
+          %{} = msg ->
+            Logger.debug("Got msg #{inspect msg}")
+        end
+
+        # invoke_callback({:recv, msg}, state)
+        {:noreply, state}
+
+      {:error, reason} ->
+        Logger.warn("Server frame error #{inspect reason}")
+        {:noreply, state}
+    end
+  end
+  # reply to the {pid, :close} message
+  def handle_info({_port, :closed}, state) do
+    Logger.warn("Drain server CLOSED")
+    {:noreply, state}
+  end
+
+  # exit signals in case the port crashes, this won't work on Ctrl-C...
+  def handle_info({:EXIT, _port, reason}, state) do
+    Logger.warn("Drain server EXIT #{reason}")
     {:noreply, state}
   end
 
