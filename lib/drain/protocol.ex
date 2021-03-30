@@ -86,59 +86,88 @@ defmodule Drain.Protocol do
     defstruct [] # these will change to a proper struct in v1
   end
 
+  # encodes without framing
   def encode(msg) do
-    data = msg
-      |> case do
-          # special cases, will change to a proper struct in v1
-          %Info{} -> "Info"
-          %Quit{} -> "Quit"
-          %Ping{} -> "Ping"
-          %Pong{} -> "Pong"
-          %{__struct__: struct} = params -> %{modulename_to_key(struct) => Map.from_struct(params)}
-      end
-      |> CBOR.encode()
+    case msg do
+      # special cases, will change to a proper struct in v1
+      %Info{} -> "Info"
+      %Quit{} -> "Quit"
+      %Ping{} -> "Ping"
+      %Pong{} -> "Pong"
+      %{__struct__: struct} = params -> %{modulename_to_key(struct) => Map.from_struct(params)}
+    end
+    |> CBOR.encode()
+  end
 
-    # add framing
+  # encodes and adds framing
+  def encode_framed(msg) do
+    data = encode(msg)
     << byte_size(data) :: size(32), data :: binary >>
   end
 
-  # hacky stub for now, strips framing
-  def decode(<< length :: size(32), data :: binary - size(length), rest :: binary >>) do
-    {:ok, msg, ""} = CBOR.decode(data)
-    Logger.debug("Packet raw (#{length} bytes): #{inspect msg}")
-    msg = msg
-      |> keys_to_atoms()
-      |> case do
-          %{:"Ok" => params} -> struct(Ok, params)
-          %{:"Err" => params} -> struct(Err, params)
-          %{:"Hello" => params} -> struct(Hello, params)
-          "Info" -> %Info{}
-          %{:"Pub" => params} -> struct(Pub, params)
-          %{:"Get" => params} -> struct(Get, params)
-          %{:"ChkSub" => params} -> struct(ChkSub, params)
-          %{:"ChkDup" => params} -> struct(ChkDup, params)
-          %{:"List" => params} -> struct(List, params)
-          %{:"Sub" => params} -> struct(Sub, params)
-          %{:"Dup" => params} -> struct(Dup, params)
-          %{:"Unsub" => params} -> struct(Unsub, params)
-          %{:"Undup" => params} -> struct(Undup, params)
-          %{:"Event" => params} -> struct(Event, params)
-          "Quit" -> %Quit{}
-          "Ping" -> %Ping{}
-          "Pong" -> %Pong{}
-      end
+  # decode a single packet without framing
+  def decode(data) do
+    case CBOR.decode(data) do
+      {:ok, msg, <<>>} ->
+        Logger.debug("Packet raw (#{byte_size(data)} bytes): #{inspect msg}")
+        {:ok, decode_internal(msg), <<>>}
 
-    Logger.debug("Packet msg (#{length} bytes): #{inspect msg}")
-    {:ok, msg, rest}
+      {:ok, msg, rest} ->
+        Logger.warn("CBOR decode short length, ignoring #{byte_size(rest)} of #{byte_size(data)} bytes")
+        {:ok, decode_internal(msg), rest}
+
+      {:error, err} ->
+        {:error, err}
+    end
   end
-  def decode(<<>>) do
+
+  # hacky stub for now
+  def decode_internal(msg) do
+    msg
+    |> keys_to_atoms()
+    |> case do
+      %{:"Ok" => params} -> struct(Ok, params)
+      %{:"Err" => params} -> struct(Err, params)
+      %{:"Hello" => params} -> struct(Hello, params)
+      "Info" -> %Info{}
+      %{:"Pub" => params} -> struct(Pub, params)
+      %{:"Get" => params} -> struct(Get, params)
+      %{:"ChkSub" => params} -> struct(ChkSub, params)
+      %{:"ChkDup" => params} -> struct(ChkDup, params)
+      %{:"List" => params} -> struct(List, params)
+      %{:"Sub" => params} -> struct(Sub, params)
+      %{:"Dup" => params} -> struct(Dup, params)
+      %{:"Unsub" => params} -> struct(Unsub, params)
+      %{:"Undup" => params} -> struct(Undup, params)
+      %{:"Event" => params} -> struct(Event, params)
+      "Quit" -> %Quit{}
+      "Ping" -> %Ping{}
+      "Pong" -> %Pong{}
+    end
+  end
+
+  # remove framing and decode
+  def decode_framed(<< length :: size(32), data :: binary - size(length), rest :: binary >>) do
+    case decode(data) do
+      {:ok, msg, <<>>} ->
+        {:ok, msg, rest}
+
+      {:ok, msg, padding} ->
+        Logger.warn("CBOR decode short length, ignoring #{byte_size(padding)} of #{length} bytes")
+        {:ok, msg, rest}
+
+      {:error, err} ->
+        {:error, err}
+    end
+  end
+  def decode_framed(<<>>) do
     {:error, <<>>}
   end
-  def decode(<< length :: size(32), _data :: binary >> = packet) do
+  def decode_framed(<< length :: size(32), _data :: binary >> = packet) do
     Logger.warn("Incomplete packet #{byte_size(packet)} of #{length} bytes")
     {:error, packet}
   end
-  def decode(packet) when is_binary(packet) do
+  def decode_framed(packet) when is_binary(packet) do
     Logger.warn("Incomplete packet #{byte_size(packet)} bytes")
     {:error, packet}
   end

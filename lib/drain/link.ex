@@ -1,6 +1,6 @@
 defmodule Drain.Link do
   @moduledoc ~S"""
-  Defines a Drain Link and its default behaviour.
+  Defines a Drain Link and the default behaviour.
 
   A target GenServer for `handle_cast(event)` has to be given, it's called when there are incoming packages.
   """
@@ -20,7 +20,7 @@ defmodule Drain.Link do
 
   defmodule State do
     @moduledoc false
-    defstruct target: nil, socket: nil, handshake: false, data: <<>>
+    defstruct target: nil, socket: nil, handshake: false
   end
 
   @default_args [name: __MODULE__, target: nil]
@@ -62,7 +62,7 @@ defmodule Drain.Link do
     static_endpoint() # use as fallback?
     {host, port} = endpoint()
 
-    case :gen_tcp.connect(host, port, [:binary, active: true]) do
+    case :gen_tcp.connect(host, port, [:binary, {:packet, 4}, active: true]) do
       {:ok, socket} ->
         Logger.debug("Connection established")
         Process.send_after(self(), :handshake_timeout, @handshake_timeout)
@@ -81,35 +81,35 @@ defmodule Drain.Link do
     {:stop, state.socket, state}
   end
 
-  # Processes the incoming TCP-Packets
+  # Processes the incoming TCP frames
   def handle_info({:tcp, socket, packet}, state) do
-    case Protocol.decode(state.data <> packet) do
-      {:ok, msg, rest} ->
+    case Protocol.decode(packet) do
+      {:ok, msg, _rest} ->
         # Some special cases...
         state = case msg do
           %Protocol.Hello{} = hello ->
             Logger.debug("Got hello from #{hello.ver}")
             packet = %Protocol.Info{} |> Protocol.encode()
             :ok = :gen_tcp.send(socket, packet)
-            %State{state | handshake: true, data: rest}
+            %State{state | handshake: true}
 
           %Protocol.Ping{} ->
             Logger.debug("Got ping, sending pong")
             packet = %Protocol.Pong{} |> Protocol.encode()
             :ok = :gen_tcp.send(socket, packet)
-            %State{state | data: rest}
+            state
 
           %{} = msg ->
             Logger.debug("Got msg #{inspect msg}")
-            %State{state | data: rest}
+            state
         end
 
         invoke_callback({:recv, msg}, state)
-        state = %State{state | socket: socket}
-        handle_info({:tcp, socket, <<>>}, state)
+        {:noreply, %State{state | socket: socket}}
 
-      {:error, packet} ->
-        {:noreply, %State{state | socket: socket, data: packet}}
+      {:error, reason} ->
+        Logger.warn("TCP frame error #{inspect reason}")
+        {:noreply, %State{state | socket: socket}}
     end
   end
 
