@@ -89,8 +89,8 @@ defmodule Drain.Link do
         state = case msg do
           %Protocol.Hello{} = hello ->
             Logger.debug("Got hello from #{hello.ver}")
-            packet = %Protocol.Info{} |> Protocol.encode()
-            :ok = :gen_tcp.send(socket, packet)
+            # packet = %Protocol.Hello{} |> Protocol.encode()
+            # :ok = :gen_tcp.send(socket, packet)
             %State{state | handshake: true}
 
           %Protocol.Ping{} ->

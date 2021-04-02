@@ -16,11 +16,6 @@ defmodule Drain.Protocol do
     defstruct ver: nil, state: nil, active: nil, passive: []
   end
 
-  defmodule Info do
-    @moduledoc false
-    defstruct [] # these will change to a proper struct in v1
-  end
-
   defmodule Pub do
     @moduledoc false
     defstruct qos: 0, topic: nil, payload: nil
@@ -73,29 +68,22 @@ defmodule Drain.Protocol do
 
   defmodule Quit do
     @moduledoc false
-    defstruct [] # these will change to a proper struct in v1
+    defstruct [] # empty for now
   end
 
   defmodule Ping do
     @moduledoc false
-    defstruct [] # these will change to a proper struct in v1
+    defstruct [] # empty for now
   end
 
   defmodule Pong do
     @moduledoc false
-    defstruct [] # these will change to a proper struct in v1
+    defstruct [] # empty for now
   end
 
   # encodes without framing
-  def encode(msg) do
-    case msg do
-      # special cases, will change to a proper struct in v1
-      %Info{} -> "Info"
-      %Quit{} -> "Quit"
-      %Ping{} -> "Ping"
-      %Pong{} -> "Pong"
-      %{__struct__: struct} = params -> %{modulename_to_key(struct) => Map.from_struct(params)}
-    end
+  def encode(%{__struct__: struct} = params) do
+    %{modulename_to_key(struct) => Map.from_struct(params)}
     |> CBOR.encode()
   end
 
@@ -129,7 +117,6 @@ defmodule Drain.Protocol do
       %{:"Ok" => params} -> struct(Ok, params)
       %{:"Err" => params} -> struct(Err, params)
       %{:"Hello" => params} -> struct(Hello, params)
-      "Info" -> %Info{}
       %{:"Pub" => params} -> struct(Pub, params)
       %{:"Get" => params} -> struct(Get, params)
       %{:"ChkSub" => params} -> struct(ChkSub, params)
@@ -140,9 +127,9 @@ defmodule Drain.Protocol do
       %{:"Unsub" => params} -> struct(Unsub, params)
       %{:"Undup" => params} -> struct(Undup, params)
       %{:"Event" => params} -> struct(Event, params)
-      "Quit" -> %Quit{}
-      "Ping" -> %Ping{}
-      "Pong" -> %Pong{}
+      %{:"Quit" => _params} -> %Quit{}
+      %{:"Ping" => _params} -> %Ping{}
+      %{:"Pong" => _params} -> %Pong{}
     end
   end
 

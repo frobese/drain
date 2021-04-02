@@ -60,8 +60,8 @@ defmodule Drain.Server do
         case msg do
           %Protocol.Hello{} = hello ->
             Logger.debug("Got hello from #{hello.ver}")
-            packet = %Protocol.Info{} |> Protocol.encode()
-            send(state, {self(), {:command, packet}})
+            # packet = %Protocol.Hello{} |> Protocol.encode()
+            # send(state, {self(), {:command, packet}})
             # %State{state | handshake: true} # maybe later...
 
           %Protocol.Ping{} ->
