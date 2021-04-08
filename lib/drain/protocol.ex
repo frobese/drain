@@ -13,7 +13,7 @@ defmodule Drain.Protocol do
 
   defmodule Hello do
     @moduledoc false
-    defstruct ver: nil, state: nil, active: nil, passive: []
+    defstruct ver: nil, state: nil, instance: nil, streams: []
   end
 
   defmodule Pub do
