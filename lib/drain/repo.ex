@@ -157,8 +157,8 @@ defmodule Drain.Repo do
       end
 
       @impl true
-      def handle_cast({:recv, %Protocol.Event{event: event}}, state) do
-        # %Protocol.Event{event: %{payload: "Hello", seq: 1, time: %{}, topic: "chat"}}
+      def handle_cast({:recv, %Protocol.Event{} = event}, state) do
+        # %Protocol.Event{payload: "Hello", seq: 1, time: %{}, topic: "chat"}
         drain_event(event.topic, event.payload)
         {:noreply, state}
       end

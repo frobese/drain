@@ -63,7 +63,7 @@ defmodule Drain.Protocol do
 
   defmodule Event do
     @moduledoc false
-    defstruct event: nil
+    defstruct seq: nil, time: nil, topic: nil, payload: nil
   end
 
   defmodule Quit do

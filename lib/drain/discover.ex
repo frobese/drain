@@ -16,7 +16,7 @@ defmodule Drain.Discover do
     with {:ok, socket} <- :gen_udp.open(0, [:binary, {:active, false}, {:broadcast, true}]),
          :ok <- :gen_udp.send(socket, @broadcast_addr, @broadcast_port, locator(group)),
          {:ok, {addr, _bport, beacon}} <- :gen_udp.recv(socket, 0, @timeout),
-         {:ok, {_group, _uuid, sport}} <- parse_beacon(beacon)
+         {:ok, {_group, _iid, sport}} <- parse_beacon(beacon)
     do
       {:ok, {addr, sport}}
     else
@@ -30,7 +30,7 @@ defmodule Drain.Discover do
     <<
       "DRA", 1,
       format_group(group)::binary,
-      0::128, # Uuid nil
+      0::64, # iid 0
       0::16, # port 0
     >>
   end
@@ -38,10 +38,10 @@ defmodule Drain.Discover do
   def parse_beacon(<<
     "DRA", 1,
     group::binary-size(8),
-    uuid::binary-size(16),
+    iid::binary-size(8),
     port::16,
   >>) do
-    {:ok, {group, uuid, port}}
+    {:ok, {group, iid, port}}
   end
   def parse_beacon(_) do
     {:error, "Can't parse beacon"}
